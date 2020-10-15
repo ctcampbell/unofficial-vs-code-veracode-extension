@@ -3,7 +3,7 @@
 	"displayName": "Unofficial Veracode Pipeline Scan",
 	"description": "Unofficial Veracode Pipeline Scan",
 	"version": "0.0.3",
-	"publisher": "ctcampbell",
+	"publisher": "ctcampbell-com",
 	"license": "MIT",
 	"repository": {
 		"url": "https://github.com/ctcampbell/unofficial-vs-code-veracode-pipeline-scan"
@@ -11,9 +11,6 @@
 	"engines": {
 		"vscode": "^1.49.0"
 	},
-	"categories": [
-		"Testing"
-	],
 	"activationEvents": [
 		"*"
 	],
@@ -21,23 +18,23 @@
 	"contributes": {
 		"commands": [
 			{
-				"command": "ctcampbell.unofficial-vs-code-veracode-pipeline-scan.scanFile",
+				"command": "ctcampbell-com.unofficial-vs-code-veracode-pipeline-scan.scanFile",
 				"title": "Unofficial Veracode Pipeline Scan"
 			},
 			{
-				"command": "ctcampbell.unofficial-vs-code-veracode-pipeline-scan.loadResults",
+				"command": "ctcampbell-com.unofficial-vs-code-veracode-pipeline-scan.loadResults",
 				"title": "Load Unofficial Veracode Pipeline Scan Results"
 			}
 		],
 		"menus": {
 			"explorer/context": [
 				{
-					"command": "ctcampbell.unofficial-vs-code-veracode-pipeline-scan.scanFile",
+					"command": "ctcampbell-com.unofficial-vs-code-veracode-pipeline-scan.scanFile",
 					"group": "8_veracode",
 					"when": "resourceExtname == .jar || resourceExtname == .war || resourceExtname == .ear || resourceExtname == .zip || resourceExtname == .apk"
 				},
 				{
-					"command": "ctcampbell.unofficial-vs-code-veracode-pipeline-scan.loadResults",
+					"command": "ctcampbell-com.unofficial-vs-code-veracode-pipeline-scan.loadResults",
 					"group": "8_veracode",
 					"when": "resourceExtname == .json"
 				}

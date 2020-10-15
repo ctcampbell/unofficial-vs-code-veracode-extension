@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { runPipelineScan } from 'unofficial-veracode-pipeline-scan';
 
-const extensionId = 'ctcampbell.unofficial-vs-code-veracode-pipeline-scan';
+const extensionId = 'ctcampbell-com.unofficial-vs-code-veracode-pipeline-scan';
 const extension = vscode.extensions.getExtension(extensionId)!;
 const extensionConfig = vscode.workspace.getConfiguration('unofficialVeracodePipelineScan');
 const sourceRootDirectory = extensionConfig['sourceRoot'];
@@ -82,6 +82,7 @@ async function scanFile(target: vscode.Uri) {
 }
 
 function parseResultsJson(target: vscode.Uri) {
+	pipelineScanDiagnosticCollection.clear();
 	let jsonFile = fs.readFileSync(target.fsPath);
 	let json = JSON.parse(jsonFile.toString());
 	let diagnosticArraysByFile: { [key: string]: vscode.Diagnostic[] } = {};
