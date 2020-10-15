@@ -5,6 +5,9 @@
 	"version": "0.0.3",
 	"publisher": "ctcampbell",
 	"license": "MIT",
+	"repository": {
+		"url": "https://github.com/ctcampbell/unofficial-vs-code-veracode-pipeline-scan"
+	},
 	"engines": {
 		"vscode": "^1.49.0"
 	},
