@@ -1,0 +1,21 @@
+{
+    "_links": {
+        "root": {
+            "href": "/"
+        },
+        "self": {
+            "href": "/scans/48fcfd28-8a37-4c99-910b-8311f22fe000/findings"
+        },
+        "help": {
+            "href": "https://help.veracode.com/reader/LMv_dtSHyb7iIxAQznC~9w/56JX_MvP4edL8JB_h8ywGA"
+        }
+    },
+    "scan_id": "48fcfd28-8a37-4c99-910b-8311f22fe000",
+    "scan_status": "SUCCESS",
+    "message": "Scan successful. Results size: 42 bytes",
+    "modules": [
+        "JS files within src.zip"
+    ],
+    "modules_count": 1,
+    "findings": []
+}

@@ -1,0 +1,103 @@
+{
+	"name": "unofficial-vs-code-veracode-pipeline-scan",
+	"displayName": "Unofficial Veracode Pipeline Scan",
+	"description": "Unofficial Veracode Pipeline Scan",
+	"version": "0.0.3",
+	"publisher": "ctcampbell",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.49.0"
+	},
+	"categories": [
+		"Testing"
+	],
+	"activationEvents": [
+		"*"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "ctcampbell.unofficial-vs-code-veracode-pipeline-scan.scanFile",
+				"title": "Unofficial Veracode Pipeline Scan"
+			},
+			{
+				"command": "ctcampbell.unofficial-vs-code-veracode-pipeline-scan.loadResults",
+				"title": "Load Unofficial Veracode Pipeline Scan Results"
+			}
+		],
+		"menus": {
+			"explorer/context": [
+				{
+					"command": "ctcampbell.unofficial-vs-code-veracode-pipeline-scan.scanFile",
+					"group": "8_veracode",
+					"when": "resourceExtname == .jar || resourceExtname == .war || resourceExtname == .ear || resourceExtname == .zip || resourceExtname == .apk"
+				},
+				{
+					"command": "ctcampbell.unofficial-vs-code-veracode-pipeline-scan.loadResults",
+					"group": "8_veracode",
+					"when": "resourceExtname == .json"
+				}
+			]
+		},
+		"configuration": {
+			"type": "object",
+			"title": "Unofficial Veracode Pipeline Scan Configuration",
+			"properties": {
+				"unofficialVeracodePipelineScan.resultsFileName": {
+					"type": "string",
+					"default": "unofficial-veracode-pipeline-scan-results.json",
+					"description": "Scan results file name"
+				},
+				"unofficialVeracodePipelineScan.sourceRoot": {
+					"type": "string",
+					"default": "",
+					"description": "Source code root folder"
+				},
+				"unofficialVeracodePipelineScan.jspRoot": {
+					"type": "string",
+					"default": "",
+					"description": "JSP root folder"
+				},
+				"unofficialVeracodePipelineScan.authProfile": {
+					"type": "string",
+					"default": "default",
+					"description": "Veracode authentication profile section from ~/.veracode/credentials"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"lint": "eslint src --ext ts",
+		"watch": "tsc -watch -p ./",
+		"pretest": "npm run compile && npm run lint",
+		"test": "node ./out/test/runTest.js"
+	},
+	"dependencies": {
+		"axios": "^0.19.0",
+		"configparser": "^0.3.6",
+		"form-data": "^3.0.0",
+		"sjcl": "^1.0.8",
+		"unofficial-veracode-pipeline-scan": "^1.0.3"
+	},
+	"devDependencies": {
+		"@types/form-data": "^2.5.0",
+		"@types/glob": "^7.1.3",
+		"@types/mocha": "^8.0.0",
+		"@types/node": "^12.11.7",
+		"@types/sjcl": "^1.0.28",
+		"@types/vscode": "^1.49.0",
+		"@typescript-eslint/eslint-plugin": "^4.1.1",
+		"@typescript-eslint/parser": "^4.1.1",
+		"eslint": "^7.9.0",
+		"glob": "^7.1.6",
+		"mocha": "^8.1.3",
+		"ts-loader": "^8.0.4",
+		"typescript": "^4.0.2",
+		"vscode-test": "^1.4.0",
+		"webpack": "^4.44.2",
+		"webpack-cli": "^3.3.12"
+	}
+}
