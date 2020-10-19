@@ -7,71 +7,87 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { runPipelineScan } from 'unofficial-veracode-pipeline-scan';
 
-const extensionId = 'ctcampbell-com.unofficial-vs-code-veracode-pipeline-scan';
+const extensionId = 'ctcampbell-com.unofficial-vs-code-veracode';
 const extension = vscode.extensions.getExtension(extensionId)!;
-const extensionConfig = vscode.workspace.getConfiguration('unofficialVeracodePipelineScan');
+const extensionConfig = vscode.workspace.getConfiguration('unofficialVeracodeExtension');
+
 const sourceRootDirectory = extensionConfig['sourceRoot'];
 const jspRootDirectory = extensionConfig['jspRoot'];
-const resultsFileName = extensionConfig['resultsFileName'];
-const diagnosticSource = extension.packageJSON.displayName;
+
+const pipelineScanResultsFilename = extensionConfig['pipelineScanResultsFilename'];
+const pipelineScanDiagnosticSource = 'Veracode Pipeline Scan';
+
+const scaResultsFilename = extensionConfig['scaResultsFilename'];
+const scaDiagnosticSource = 'Veracode SCA';
+
 const outputChannel = vscode.window.createOutputChannel(extension.packageJSON.displayName);
 const diagnosticsStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 
 let pipelineScanDiagnosticCollection: vscode.DiagnosticCollection;
-let watcher: vscode.FileSystemWatcher;
+let scaDiagnosticCollection: vscode.DiagnosticCollection;
+let pipelineScanWatcher: vscode.FileSystemWatcher;
+let scaWatcher: vscode.FileSystemWatcher;
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	pipelineScanDiagnosticCollection = vscode.languages.createDiagnosticCollection(extensionId);
+	pipelineScanDiagnosticCollection = vscode.languages.createDiagnosticCollection(`${extensionId}.pipelineScan`);
 	context.subscriptions.push(pipelineScanDiagnosticCollection);
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let scanFileDisposable = vscode.commands.registerCommand(`${extensionId}.scanFile`, (target: vscode.Uri) => {
+	scaDiagnosticCollection = vscode.languages.createDiagnosticCollection(`${extensionId}.sca`);
+	context.subscriptions.push(scaDiagnosticCollection);
+
+	let scanFileDisposable = vscode.commands.registerCommand(`${extensionId}.scanFileWithPipeline`, (target: vscode.Uri) => {
 		if (target) {
-			scanFile(target);
+			scanFileWithPipeline(target);
 		}
 	});
 	context.subscriptions.push(scanFileDisposable);
-	let loadResultsDisposable = vscode.commands.registerCommand(`${extensionId}.loadResults`, (target: vscode.Uri) => {
+	let loadResultsDisposable = vscode.commands.registerCommand(`${extensionId}.loadPipelineScanResults`, (target: vscode.Uri) => {
 		if (target) {
-			parseResultsJson(target);
+			parsePipelineScanResultsJson(target);
 		}
 	});
 	context.subscriptions.push(loadResultsDisposable);
+	let loadSCAResultsDisposable = vscode.commands.registerCommand(`${extensionId}.loadSCAResults`, (target: vscode.Uri) => {
+		if (target) {
+			parseSCAResultsJson(target);
+		}
+	});
+	context.subscriptions.push(loadSCAResultsDisposable);
 
-	watcher = vscode.workspace.createFileSystemWatcher(`**/${resultsFileName}`);
-	watcher.onDidCreate(parseResultsJson);
-	watcher.onDidChange(parseResultsJson);
-	watcher.onDidDelete(() => {
+	pipelineScanWatcher = vscode.workspace.createFileSystemWatcher(`**/${pipelineScanResultsFilename}`);
+	pipelineScanWatcher.onDidCreate(parsePipelineScanResultsJson);
+	pipelineScanWatcher.onDidChange(parsePipelineScanResultsJson);
+	pipelineScanWatcher.onDidDelete(() => {
 		pipelineScanDiagnosticCollection.clear();
 	});
-	context.subscriptions.push(watcher);
+	context.subscriptions.push(pipelineScanWatcher);
+
+	scaWatcher = vscode.workspace.createFileSystemWatcher(`**/${scaResultsFilename}`);
+	scaWatcher.onDidCreate(parseSCAResultsJson);
+	scaWatcher.onDidChange(parseSCAResultsJson);
+	scaWatcher.onDidDelete(() => {
+		scaDiagnosticCollection.clear();
+	});
+	context.subscriptions.push(scaWatcher);
 }
 
-// this method is called when your extension is deactivated
-export function deactivate() {}
-
-async function scanFile(target: vscode.Uri) {
+async function scanFileWithPipeline(target: vscode.Uri) {
 	outputChannel.clear();
 	outputChannel.show();
 	pipelineScanDiagnosticCollection.clear();
 
-	let fileName = target.fsPath.substring(target.fsPath.lastIndexOf(path.sep) + 1);
-	diagnosticsStatusBarItem.text = `Scanning ${fileName}`;
+	let filename = target.fsPath.substring(target.fsPath.lastIndexOf(path.sep) + 1);
+	diagnosticsStatusBarItem.text = `Scanning ${filename}`;
 	diagnosticsStatusBarItem.show();
 
 	try {
 		let fileUrl = url.pathToFileURL(target.fsPath);
 		if (vscode.workspace.workspaceFolders) {
-			let outputFile = url.pathToFileURL(path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, resultsFileName));
+			let outputFile = url.pathToFileURL(path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, pipelineScanResultsFilename));
 			await runPipelineScan(fileUrl, outputFile, sendLogMessage);
-			diagnosticsStatusBarItem.text = `Scan complete ${fileName}`;
+			diagnosticsStatusBarItem.text = `Scan complete ${filename}`;
 			setTimeout(() => {
 				diagnosticsStatusBarItem.hide();
 			}, 10000);
@@ -81,7 +97,7 @@ async function scanFile(target: vscode.Uri) {
 	}
 }
 
-function parseResultsJson(target: vscode.Uri) {
+function parsePipelineScanResultsJson(target: vscode.Uri) {
 	pipelineScanDiagnosticCollection.clear();
 	let jsonFile = fs.readFileSync(target.fsPath);
 	let json = JSON.parse(jsonFile.toString());
@@ -96,7 +112,7 @@ function parseResultsJson(target: vscode.Uri) {
 		let range = new vscode.Range(line - 1 , 0, line - 1, Number.MAX_VALUE);
 		let severity = mapSeverityToVSCodeSeverity(finding.severity);
 		let diagnostic = new vscode.Diagnostic(range, finding.issue_type, severity);
-		diagnostic.source = diagnosticSource;
+		// diagnostic.source = pipelineScanDiagnosticSource;
 		let issueDisplayText = finding.display_text.replace(/(<([^>]+)>)/ig,'');
 		diagnostic.message = `${mapSeverityToString(finding.severity)} - CWE ${finding.cwe_id} - ${finding.issue_type}\r\n${issueDisplayText}`;
 		let diagnosticArray = diagnosticArraysByFile[finding.files.source_file.file] || [];
@@ -110,12 +126,111 @@ function parseResultsJson(target: vscode.Uri) {
 	}
 }
 
+function parseSCAResultsJson(target: vscode.Uri) {
+	scaDiagnosticCollection.clear();
+	let jsonFile = fs.readFileSync(target.fsPath);
+	let json = JSON.parse(jsonFile.toString());
+	let graphs = json.records[0].graphs;
+	let libraries = json.records[0].libraries;
+	let librariesByFile = [];
+	let vulnerabilities = json.records[0].vulnerabilities;
+
+	for (let item of graphs) {
+		librariesByFile.push({
+			filename: item.filename,
+			libraries: flattenGraph(item),
+			diagnostics: [] as vscode.Diagnostic[]
+		});
+	}
+
+	vulnerabilities.sort((a: any,b: any) => b.cvssScore - a.cvssScore);
+
+	for (let vulnerability of vulnerabilities) {
+		for (let vulnerableLibrary of vulnerability.libraries) {
+			let libraryIndexParts = vulnerableLibrary._links.ref.split('/');
+			let libraryIndex = parseInt(libraryIndexParts[4]);
+			let libraryVersionIndex = parseInt(libraryIndexParts[6]);
+			let library = libraries[libraryIndex];
+			let libraryVersion = library.versions[libraryVersionIndex];
+			let libraryCoord = `${library.coordinateType}.${library.coordinate1 || ''}.${library.coordinate2 || ''}.${libraryVersion.version}`;
+			for (let file of librariesByFile) {
+				if (file.filename) {
+					let fileUri = vscode.Uri.parse(path.join((vscode.workspace.workspaceFolders?.[0].uri.toString() || ''), file.filename));
+					let configFile = fs.readFileSync(fileUri.fsPath);
+
+					if (file.libraries.has(libraryCoord)) {
+						let lineNumber = getLineNumber(library.coordinate2 || library.coordinate1, configFile.toString());
+						let range = new vscode.Range(lineNumber, 0, lineNumber, Number.MAX_VALUE);
+						let cveString = vulnerability.cve ? `CVE ${vulnerability.cve}` : 'NO CVE';
+						let coordinate1String = library.coordinate2 ? `${library.coordinate1}.` : library.coordinate1;
+						let message = `CVSS ${vulnerability.cvssScore.toFixed(1)} - ${cveString} - ${vulnerability.title}\nAffected Library: ${coordinate1String}${library.coordinate2 || ''} ${libraryVersion.version}\nDescription: ${vulnerability.overview}`;
+						let severity = mapCVSSToVSCodeSeverity(vulnerability.cvssScore);
+						let diagnostic = new vscode.Diagnostic(range, message, severity);
+						file.diagnostics.push(diagnostic);
+					}
+					
+					scaDiagnosticCollection.set(fileUri, file.diagnostics);
+				}
+			}
+		}
+	}
+}
+
+// Utils
+
+function getLineNumber(substring: string, text: string): number {
+	let line = 0, matchedChars = 0;
+
+	for (let i = 0; i < text.length; i++) {
+		text[i] === substring[matchedChars] ? matchedChars++ : matchedChars = 0;
+
+		if (matchedChars === substring.length){
+			return line;                  
+		}
+		if (text[i] === '\n'){
+			line++;
+		}
+	}
+
+	return  0;
+}
+
+function flattenGraph(root: any): Map<string, object> {
+	let stack = root.directs;
+	let hashMap = new Map<string, object>();
+
+    while(stack.length !== 0) {
+		let node = stack.pop();
+		if (node) {
+			let uid = `${node.coords.coordinateType}.${node.coords.coordinate1 || ''}.${node.coords.coordinate2 || ''}.${node.coords.version}`;
+			if (!hashMap.get(uid)) {
+				hashMap.set(uid, node);
+				for(let i: number = node.directs.length - 1; i >= 0; i--) {
+					stack.push(node.directs[i]);
+				}
+			}
+		}
+    }
+
+    return hashMap;
+}
+
 function mapSeverityToVSCodeSeverity(sev: number): vscode.DiagnosticSeverity {
 	switch (sev) {
 		case 5:
 		case 4: return vscode.DiagnosticSeverity.Error;
 		case 3: return vscode.DiagnosticSeverity.Warning;
 		default: return vscode.DiagnosticSeverity.Information;
+	}
+}
+
+function mapCVSSToVSCodeSeverity(sev: number): vscode.DiagnosticSeverity {
+	if (sev >= 8.0) {
+		return vscode.DiagnosticSeverity.Error;
+	} else if (sev >= 6.0) {
+		return vscode.DiagnosticSeverity.Warning;
+	} else {
+		return vscode.DiagnosticSeverity.Information;
 	}
 }
 

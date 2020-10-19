@@ -1,12 +1,12 @@
 {
-	"name": "unofficial-vs-code-veracode-pipeline-scan",
-	"displayName": "Unofficial Veracode Pipeline Scan",
-	"description": "Unofficial Veracode Pipeline Scan",
+	"name": "unofficial-vs-code-veracode",
+	"displayName": "Unofficial Veracode Extension",
+	"description": "Unofficial Veracode Extension",
 	"version": "0.0.3",
 	"publisher": "ctcampbell-com",
 	"license": "MIT",
 	"repository": {
-		"url": "https://github.com/ctcampbell/unofficial-vs-code-veracode-pipeline-scan"
+		"url": "https://github.com/ctcampbell/unofficial-vs-code-veracode-extension"
 	},
 	"engines": {
 		"vscode": "^1.49.0"
@@ -18,23 +18,32 @@
 	"contributes": {
 		"commands": [
 			{
-				"command": "ctcampbell-com.unofficial-vs-code-veracode-pipeline-scan.scanFile",
-				"title": "Unofficial Veracode Pipeline Scan"
+				"command": "ctcampbell-com.unofficial-vs-code-veracode.scanFileWithPipeline",
+				"title": "Run Veracode Pipeline Scan"
 			},
 			{
-				"command": "ctcampbell-com.unofficial-vs-code-veracode-pipeline-scan.loadResults",
-				"title": "Load Unofficial Veracode Pipeline Scan Results"
+				"command": "ctcampbell-com.unofficial-vs-code-veracode.loadPipelineScanResults",
+				"title": "Load Veracode Pipeline Scan Results"
+			},
+			{
+				"command": "ctcampbell-com.unofficial-vs-code-veracode.loadSCAResults",
+				"title": "Load Veracode SCA Results"
 			}
 		],
 		"menus": {
 			"explorer/context": [
 				{
-					"command": "ctcampbell-com.unofficial-vs-code-veracode-pipeline-scan.scanFile",
+					"command": "ctcampbell-com.unofficial-vs-code-veracode.scanFileWithPipeline",
 					"group": "8_veracode",
 					"when": "resourceExtname == .jar || resourceExtname == .war || resourceExtname == .ear || resourceExtname == .zip || resourceExtname == .apk"
 				},
 				{
-					"command": "ctcampbell-com.unofficial-vs-code-veracode-pipeline-scan.loadResults",
+					"command": "ctcampbell-com.unofficial-vs-code-veracode.loadPipelineScanResults",
+					"group": "8_veracode",
+					"when": "resourceExtname == .json"
+				},
+				{
+					"command": "ctcampbell-com.unofficial-vs-code-veracode.loadSCAResults",
 					"group": "8_veracode",
 					"when": "resourceExtname == .json"
 				}
@@ -42,27 +51,32 @@
 		},
 		"configuration": {
 			"type": "object",
-			"title": "Unofficial Veracode Pipeline Scan Configuration",
+			"title": "Unofficial Veracode Extension Configuration",
 			"properties": {
-				"unofficialVeracodePipelineScan.resultsFileName": {
+				"unofficialVeracodeExtension.authProfile": {
 					"type": "string",
-					"default": "unofficial-veracode-pipeline-scan-results.json",
-					"description": "Scan results file name"
+					"default": "default",
+					"description": "Veracode authentication profile section from ~/.veracode/credentials"
 				},
-				"unofficialVeracodePipelineScan.sourceRoot": {
+				"unofficialVeracodeExtension.pipelineScanResultsFilename": {
+					"type": "string",
+					"default": "veracode-pipeline-scan-results.json",
+					"description": "Veracode Pipeline Scan results file name"
+				},
+				"unofficialVeracodeExtension.scaResultsFilename": {
+					"type": "string",
+					"default": "veracode-sca-results.json",
+					"description": "Veracode SCA Scan results file name"
+				},
+				"unofficialVeracodeExtension.sourceRoot": {
 					"type": "string",
 					"default": "",
 					"description": "Source code root folder"
 				},
-				"unofficialVeracodePipelineScan.jspRoot": {
+				"unofficialVeracodeExtension.jspRoot": {
 					"type": "string",
 					"default": "",
 					"description": "JSP root folder"
-				},
-				"unofficialVeracodePipelineScan.authProfile": {
-					"type": "string",
-					"default": "default",
-					"description": "Veracode authentication profile section from ~/.veracode/credentials"
 				}
 			}
 		}
