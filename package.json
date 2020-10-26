@@ -2,7 +2,7 @@
 	"name": "unofficial-vs-code-veracode",
 	"displayName": "Unofficial Veracode Extension",
 	"description": "Unofficial Veracode Extension",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"publisher": "ctcampbell-com",
 	"license": "MIT",
 	"repository": {
