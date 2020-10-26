@@ -99,8 +99,21 @@ async function scanFileWithPipeline(target: vscode.Uri) {
 
 function parsePipelineScanResultsJson(target: vscode.Uri) {
 	pipelineScanDiagnosticCollection.clear();
-	let jsonFile = fs.readFileSync(target.fsPath, 'utf8');
-	let json = JSON.parse(jsonFile);
+	
+	let json: any = {};
+	try {
+		json = JSON.parse(fs.readFileSync(target.fsPath, 'utf8').trimStart());
+	} catch(error) {
+		if (error.message.startsWith('Unexpected token')) {
+			try {
+				json = JSON.parse(fs.readFileSync(target.fsPath, 'utf16le').trimStart());
+			} catch(error) {
+				console.log(error);
+				return;
+			}
+		}
+	}
+
 	let diagnosticArraysByFile: { [key: string]: vscode.Diagnostic[] } = {};
 	let absoluteSourceRoot = path.join((vscode.workspace.workspaceFolders?.[0].uri.toString() || ''), sourceRootDirectory);
 	let absoluteJSPRoot = path.join((vscode.workspace.workspaceFolders?.[0].uri.toString() || ''), jspRootDirectory);
@@ -128,55 +141,64 @@ function parsePipelineScanResultsJson(target: vscode.Uri) {
 
 function parseSCAResultsJson(target: vscode.Uri) {
 	scaDiagnosticCollection.clear();
+
+	let json: any = {};
 	try {
-		let jsonFile = fs.readFileSync(target.fsPath, 'utf8');
-		let json = JSON.parse(jsonFile);
-		let graphs = json.records[0].graphs;
+		json = JSON.parse(fs.readFileSync(target.fsPath, 'utf8').trimStart());
+	} catch(error) {
+		if (error.message.startsWith('Unexpected token')) {
+			try {
+				json = JSON.parse(fs.readFileSync(target.fsPath, 'utf16le').trimStart());
+			} catch(error) {
+				console.log(error);
+				return;
+			}
+		}
+	}
+
+	let graphs = json.records[0].graphs;
 		let libraries = json.records[0].libraries;
 		let librariesByFile = [];
 		let vulnerabilities = json.records[0].vulnerabilities;
 
-		for (let item of graphs) {
-			librariesByFile.push({
-				filename: item.filename,
-				libraries: flattenGraph(item),
-				diagnostics: [] as vscode.Diagnostic[]
-			});
-		}
-	
-		vulnerabilities.sort((a: any,b: any) => b.cvssScore - a.cvssScore);
-	
-		for (let vulnerability of vulnerabilities) {
-			for (let vulnerableLibrary of vulnerability.libraries) {
-				let libraryIndexParts = vulnerableLibrary._links.ref.split('/');
-				let libraryIndex = parseInt(libraryIndexParts[4]);
-				let libraryVersionIndex = parseInt(libraryIndexParts[6]);
-				let library = libraries[libraryIndex];
-				let libraryVersion = library.versions[libraryVersionIndex];
-				let libraryCoord = `${library.coordinateType}.${library.coordinate1 || ''}.${library.coordinate2 || ''}.${libraryVersion.version}`;
-				for (let file of librariesByFile) {
-					if (file.filename) {
-						let fileUri = vscode.Uri.parse(path.join((vscode.workspace.workspaceFolders?.[0].uri.toString() || ''), file.filename));
-						let configFile = fs.readFileSync(fileUri.fsPath);
-	
-						if (file.libraries.has(libraryCoord)) {
-							let lineNumber = getLineNumber(library.coordinate2 || library.coordinate1, configFile.toString());
-							let range = new vscode.Range(lineNumber, 0, lineNumber, Number.MAX_VALUE);
-							let cveString = vulnerability.cve ? `CVE ${vulnerability.cve}` : 'NO CVE';
-							let coordinate1String = library.coordinate2 ? `${library.coordinate1}.` : library.coordinate1;
-							let message = `CVSS ${vulnerability.cvssScore.toFixed(1)} - ${cveString} - ${vulnerability.title}\nAffected Library: ${coordinate1String}${library.coordinate2 || ''} ${libraryVersion.version}\nDescription: ${vulnerability.overview}`;
-							let severity = mapCVSSToVSCodeSeverity(vulnerability.cvssScore);
-							let diagnostic = new vscode.Diagnostic(range, message, severity);
-							file.diagnostics.push(diagnostic);
-						}
-						
-						scaDiagnosticCollection.set(fileUri, file.diagnostics);
+	for (let item of graphs) {
+		librariesByFile.push({
+			filename: item.filename,
+			libraries: flattenGraph(item),
+			diagnostics: [] as vscode.Diagnostic[]
+		});
+	}
+
+	vulnerabilities.sort((a: any,b: any) => b.cvssScore - a.cvssScore);
+
+	for (let vulnerability of vulnerabilities) {
+		for (let vulnerableLibrary of vulnerability.libraries) {
+			let libraryIndexParts = vulnerableLibrary._links.ref.split('/');
+			let libraryIndex = parseInt(libraryIndexParts[4]);
+			let libraryVersionIndex = parseInt(libraryIndexParts[6]);
+			let library = libraries[libraryIndex];
+			let libraryVersion = library.versions[libraryVersionIndex];
+			let libraryCoord = `${library.coordinateType}.${library.coordinate1 || ''}.${library.coordinate2 || ''}.${libraryVersion.version}`;
+			for (let file of librariesByFile) {
+				if (file.filename) {
+					let fileUri = vscode.Uri.parse(path.join((vscode.workspace.workspaceFolders?.[0].uri.toString() || ''), file.filename));
+					let configFile = fs.readFileSync(fileUri.fsPath);
+
+					if (file.libraries.has(libraryCoord)) {
+						let lineNumber = getLineNumber(library.coordinate2 || library.coordinate1, configFile.toString());
+						let range = new vscode.Range(lineNumber, 0, lineNumber, Number.MAX_VALUE);
+						let cveString = vulnerability.cve ? `CVE ${vulnerability.cve}` : 'NO CVE';
+						let coordinate1String = library.coordinate2 ? `${library.coordinate1}.` : library.coordinate1;
+						let message = `CVSS ${vulnerability.cvssScore.toFixed(1)} - ${cveString} - ${vulnerability.title}\nAffected Library: ${coordinate1String}${library.coordinate2 || ''} ${libraryVersion.version}\nDescription: ${vulnerability.overview}`;
+						let severity = mapCVSSToVSCodeSeverity(vulnerability.cvssScore);
+						let diagnostic = new vscode.Diagnostic(range, message, severity);
+						file.diagnostics.push(diagnostic);
 					}
+					
+					scaDiagnosticCollection.set(fileUri, file.diagnostics);
 				}
 			}
 		}
-	} catch(error) {
-		console.log(error);
 	}
 }
 
