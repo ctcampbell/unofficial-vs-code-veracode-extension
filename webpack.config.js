@@ -34,6 +34,14 @@ const config = {
             loader: 'ts-loader'
           }
         ]
+      },
+      {
+        test: /\.(js|jsx)$/,
+        use: [
+            {
+                loader: 'shebang-loader'
+            }
+        ]
       }
     ]
   }
