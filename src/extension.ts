@@ -115,8 +115,14 @@ function parsePipelineScanResultsJson(target: vscode.Uri) {
 	}
 
 	let diagnosticArraysByFile: { [key: string]: vscode.Diagnostic[] } = {};
-	let absoluteSourceRoot = path.join((vscode.workspace.workspaceFolders?.[0].uri.toString() || ''), sourceRootDirectory);
-	let absoluteJSPRoot = path.join((vscode.workspace.workspaceFolders?.[0].uri.toString() || ''), jspRootDirectory);
+
+	let absoluteSourceRoot = vscode.Uri.parse('');
+	let absoluteJSPRoot = vscode.Uri.parse('');
+	if (vscode.workspace.workspaceFolders) {
+		absoluteSourceRoot = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, sourceRootDirectory);
+		absoluteJSPRoot = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, jspRootDirectory);
+	}
+
 	let findings = json.findings;
 
 	for (var i = 0; i < findings.length; i++) {
@@ -125,7 +131,6 @@ function parsePipelineScanResultsJson(target: vscode.Uri) {
 		let range = new vscode.Range(line - 1 , 0, line - 1, Number.MAX_VALUE);
 		let severity = mapSeverityToVSCodeSeverity(finding.severity);
 		let diagnostic = new vscode.Diagnostic(range, finding.issue_type, severity);
-		// diagnostic.source = pipelineScanDiagnosticSource;
 		let issueDisplayText = finding.display_text.replace(/(<([^>]+)>)/ig,'');
 		diagnostic.message = `${mapSeverityToString(finding.severity)} - CWE ${finding.cwe_id} - ${finding.issue_type}\r\n${issueDisplayText}`;
 		let diagnosticArray = diagnosticArraysByFile[finding.files.source_file.file] || [];
@@ -134,8 +139,8 @@ function parsePipelineScanResultsJson(target: vscode.Uri) {
 	}
 	for (let diagnosticArrayFile in diagnosticArraysByFile) {
 		diagnosticArraysByFile[diagnosticArrayFile].sort((a, b) => a.severity - b.severity);
-		let prefix = diagnosticArrayFile.startsWith('WEB-INF') ? absoluteJSPRoot : absoluteSourceRoot;
-		pipelineScanDiagnosticCollection.set(vscode.Uri.parse(path.join(prefix, diagnosticArrayFile)), diagnosticArraysByFile[diagnosticArrayFile]);
+		let prefixUri = diagnosticArrayFile.startsWith('WEB-INF') ? absoluteJSPRoot : absoluteSourceRoot;
+		pipelineScanDiagnosticCollection.set(vscode.Uri.joinPath(prefixUri, diagnosticArrayFile), diagnosticArraysByFile[diagnosticArrayFile]);
 	}
 }
 
@@ -180,8 +185,8 @@ function parseSCAResultsJson(target: vscode.Uri) {
 			let libraryVersion = library.versions[libraryVersionIndex];
 			let libraryCoord = `${library.coordinateType}.${library.coordinate1 || ''}.${library.coordinate2 || ''}.${libraryVersion.version}`;
 			for (let file of librariesByFile) {
-				if (file.filename) {
-					let fileUri = vscode.Uri.parse(path.join((vscode.workspace.workspaceFolders?.[0].uri.toString() || ''), file.filename));
+				if (file.filename && vscode.workspace.workspaceFolders) {
+					let fileUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, file.filename);
 					let configFile = fs.readFileSync(fileUri.fsPath);
 
 					if (file.libraries.has(libraryCoord)) {
