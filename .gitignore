@@ -4,3 +4,5 @@ node_modules
 *.vsix
 src.zip
 veracode-pipeline-scan-results.json
+veracode-sca-results.json
+.vscode/
