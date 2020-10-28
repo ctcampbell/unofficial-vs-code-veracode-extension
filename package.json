@@ -2,7 +2,7 @@
 	"name": "unofficial-vs-code-veracode",
 	"displayName": "Unofficial Veracode Extension",
 	"description": "Unofficial Veracode Extension",
-	"version": "0.0.7",
+	"version": "0.0.8",
 	"publisher": "ctcampbell-com",
 	"license": "MIT",
 	"repository": {
@@ -19,7 +19,8 @@
 		"commands": [
 			{
 				"command": "ctcampbell-com.unofficial-vs-code-veracode.scanFileWithPipeline",
-				"title": "Run Veracode Pipeline Scan"
+				"title": "Run Veracode Pipeline Scan",
+				"when": "false"
 			},
 			{
 				"command": "ctcampbell-com.unofficial-vs-code-veracode.loadPipelineScanResults",
@@ -50,13 +51,17 @@
 			]
 		},
 		"configuration": {
-			"type": "object",
-			"title": "Unofficial Veracode Extension Configuration",
+			"title": "Unofficial Veracode Extension",
 			"properties": {
 				"unofficialVeracodeExtension.authProfile": {
 					"type": "string",
 					"default": "default",
 					"description": "Veracode authentication profile section from ~/.veracode/credentials"
+				},
+				"unofficialVeracodeExtension.pipelineScanFilepath": {
+					"type": "string",
+					"default": "",
+					"description": "Relative path for file to scan using Veracode Pipeline Scan"
 				},
 				"unofficialVeracodeExtension.pipelineScanResultsFilename": {
 					"type": "string",
@@ -77,6 +82,11 @@
 					"type": "string",
 					"default": "",
 					"description": "JSP root folder"
+				},
+				"unofficialVeracodeExtension.scaRootFolder": {
+					"type": "string",
+					"default": "",
+					"description": "Relative path to root folder for project, use if SCA results file is not stored in project root"
 				}
 			}
 		}

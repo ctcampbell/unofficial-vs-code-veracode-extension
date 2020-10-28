@@ -30,6 +30,11 @@ The following settings are available:
         "default": "default",
         "description": "Veracode authentication profile section from ~/.veracode/credentials"
     },
+    "unofficialVeracodeExtension.pipelineScanFilepath": {
+        "type": "string",
+        "default": "",
+        "description": "Relative path for file to scan using Veracode Pipeline Scan when running from command palette"
+    },
     "unofficialVeracodeExtension.pipelineScanResultsFilename": {
         "type": "string",
         "default": "veracode-pipeline-scan-results.json",
@@ -49,6 +54,11 @@ The following settings are available:
         "type": "string",
         "default": "",
         "description": "JSP root folder"
+    },
+    "unofficialVeracodeExtension.scaRootFolder": {
+        "type": "string",
+        "default": "",
+        "description": "Relative path to root folder for project, use if SCA results file is not stored in project root"
     }
 
 `unofficialVeracodeExtension.sourceRoot` and `unofficialVeracodeExtension.jspRoot` can be used to prefix filenames in the scan results where the Veracode engine does not have full visibilty of the source code directory structure (e.g. Java scan results will be scoped to the `com/example/app/` directory and this usually requires prefixing with `src/main/java` or similar to create a system filepath). These settings are not typically needed for languages scanned as source code, so long as the zip archive created for a scan contains the full folder structure of the source code (usually this means you should zip the `src/` folder or similar).

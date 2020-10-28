@@ -8,65 +8,52 @@ import * as path from 'path';
 import { runPipelineScan } from 'unofficial-veracode-pipeline-scan';
 
 const extensionId = 'ctcampbell-com.unofficial-vs-code-veracode';
+const extensionConfigName = 'unofficialVeracodeExtension';
 const extension = vscode.extensions.getExtension(extensionId)!;
-const extensionConfig = vscode.workspace.getConfiguration('unofficialVeracodeExtension');
-
-const sourceRootDirectory = extensionConfig['sourceRoot'];
-const jspRootDirectory = extensionConfig['jspRoot'];
-
-const pipelineScanResultsFilename = extensionConfig['pipelineScanResultsFilename'];
-const pipelineScanDiagnosticSource = 'Veracode Pipeline Scan';
-
-const scaResultsFilename = extensionConfig['scaResultsFilename'];
-const scaDiagnosticSource = 'Veracode SCA';
 
 const outputChannel = vscode.window.createOutputChannel(extension.packageJSON.displayName);
 const diagnosticsStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 
-let pipelineScanDiagnosticCollection: vscode.DiagnosticCollection;
-let scaDiagnosticCollection: vscode.DiagnosticCollection;
-let pipelineScanWatcher: vscode.FileSystemWatcher;
-let scaWatcher: vscode.FileSystemWatcher;
+let extensionConfig: vscode.WorkspaceConfiguration;
+let sourceRootDirectory: string;
+let jspRootDirectory: string;
+let pipelineScanResultsFilename: string;
+let scaRootFolder: string;
+let scaResultsFilename: string;
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
+let pipelineScanDiagnosticCollection = vscode.languages.createDiagnosticCollection(`${extensionId}.pipelineScan`);
+let scaDiagnosticCollection = vscode.languages.createDiagnosticCollection(`${extensionId}.sca`);
+
+function loadConfig() {
+	extensionConfig = vscode.workspace.getConfiguration(extensionConfigName);
+	sourceRootDirectory = extensionConfig['sourceRoot'];
+	jspRootDirectory = extensionConfig['jspRoot'];
+	pipelineScanResultsFilename = extensionConfig['pipelineScanResultsFilename'];
+	scaRootFolder = extensionConfig['scaRootFolder'];
+	scaResultsFilename = extensionConfig['scaResultsFilename'];
+}
+
 export function activate(context: vscode.ExtensionContext) {
-	pipelineScanDiagnosticCollection = vscode.languages.createDiagnosticCollection(`${extensionId}.pipelineScan`);
-	context.subscriptions.push(pipelineScanDiagnosticCollection);
+	loadConfig();
 
-	scaDiagnosticCollection = vscode.languages.createDiagnosticCollection(`${extensionId}.sca`);
+	context.subscriptions.push(pipelineScanDiagnosticCollection);
 	context.subscriptions.push(scaDiagnosticCollection);
 
-	let scanFileDisposable = vscode.commands.registerCommand(`${extensionId}.scanFileWithPipeline`, (target: vscode.Uri) => {
-		if (target) {
-			scanFileWithPipeline(target);
-		}
-	});
-	context.subscriptions.push(scanFileDisposable);
-	let loadResultsDisposable = vscode.commands.registerCommand(`${extensionId}.loadPipelineScanResults`, (target: vscode.Uri) => {
-		if (target) {
-			parsePipelineScanResultsJson(target);
-		}
-	});
-	context.subscriptions.push(loadResultsDisposable);
-	let loadSCAResultsDisposable = vscode.commands.registerCommand(`${extensionId}.loadSCAResults`, (target: vscode.Uri) => {
-		if (target) {
-			parseSCAResultsJson(target);
-		}
-	});
-	context.subscriptions.push(loadSCAResultsDisposable);
+	context.subscriptions.push(vscode.commands.registerCommand(`${extensionId}.scanFileWithPipeline`, scanFileWithPipeline));
+	context.subscriptions.push(vscode.commands.registerCommand(`${extensionId}.loadPipelineScanResults`, loadPipelineScanResultsJson));
+	context.subscriptions.push(vscode.commands.registerCommand(`${extensionId}.loadSCAResults`, loadSCAResultsJson));
 
-	pipelineScanWatcher = vscode.workspace.createFileSystemWatcher(`**/${pipelineScanResultsFilename}`);
-	pipelineScanWatcher.onDidCreate(parsePipelineScanResultsJson);
-	pipelineScanWatcher.onDidChange(parsePipelineScanResultsJson);
+	let pipelineScanWatcher = vscode.workspace.createFileSystemWatcher(`**/${pipelineScanResultsFilename}`);
+	pipelineScanWatcher.onDidCreate(loadPipelineScanResultsJson);
+	pipelineScanWatcher.onDidChange(loadPipelineScanResultsJson);
 	pipelineScanWatcher.onDidDelete(() => {
 		pipelineScanDiagnosticCollection.clear();
 	});
 	context.subscriptions.push(pipelineScanWatcher);
 
-	scaWatcher = vscode.workspace.createFileSystemWatcher(`**/${scaResultsFilename}`);
-	scaWatcher.onDidCreate(parseSCAResultsJson);
-	scaWatcher.onDidChange(parseSCAResultsJson);
+	let scaWatcher = vscode.workspace.createFileSystemWatcher(`**/${scaResultsFilename}`);
+	scaWatcher.onDidCreate(loadSCAResultsJson);
+	scaWatcher.onDidChange(loadSCAResultsJson);
 	scaWatcher.onDidDelete(() => {
 		scaDiagnosticCollection.clear();
 	});
@@ -74,9 +61,18 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 async function scanFileWithPipeline(target: vscode.Uri) {
+	loadConfig();
 	outputChannel.clear();
 	outputChannel.show();
 	pipelineScanDiagnosticCollection.clear();
+
+	if (!target && vscode.workspace.workspaceFolders) {
+		if (extensionConfig['pipelineScanFilepath'] === '') {
+			sendLogMessage('No default Pipeline Scan filepath set, see extension help for configuration settings');
+			return;
+		}
+		target = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, extensionConfig['pipelineScanFilepath']);
+	}
 
 	let filename = target.fsPath.substring(target.fsPath.lastIndexOf(path.sep) + 1);
 	diagnosticsStatusBarItem.text = `Scanning ${filename}`;
@@ -97,9 +93,14 @@ async function scanFileWithPipeline(target: vscode.Uri) {
 	}
 }
 
-function parsePipelineScanResultsJson(target: vscode.Uri) {
+function loadPipelineScanResultsJson(target: vscode.Uri) {
+	loadConfig();
 	pipelineScanDiagnosticCollection.clear();
-	
+
+	if (!target && vscode.workspace.workspaceFolders) {
+		target = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, pipelineScanResultsFilename);
+	}
+ 	
 	let json: any = {};
 	try {
 		json = JSON.parse(fs.readFileSync(target.fsPath, 'utf8').trimStart());
@@ -124,7 +125,6 @@ function parsePipelineScanResultsJson(target: vscode.Uri) {
 	}
 
 	let findings = json.findings;
-
 	for (var i = 0; i < findings.length; i++) {
 		let finding = findings[i];
 		let line = finding.files.source_file.line;
@@ -144,8 +144,13 @@ function parsePipelineScanResultsJson(target: vscode.Uri) {
 	}
 }
 
-function parseSCAResultsJson(target: vscode.Uri) {
+function loadSCAResultsJson(target: vscode.Uri) {
+	loadConfig();
 	scaDiagnosticCollection.clear();
+
+	if (!target && vscode.workspace.workspaceFolders) {
+		target = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, scaResultsFilename);
+	}
 
 	let json: any = {};
 	try {
@@ -162,9 +167,9 @@ function parseSCAResultsJson(target: vscode.Uri) {
 	}
 
 	let graphs = json.records[0].graphs;
-		let libraries = json.records[0].libraries;
-		let librariesByFile = [];
-		let vulnerabilities = json.records[0].vulnerabilities;
+	let libraries = json.records[0].libraries;
+	let librariesByFile = [];
+	let vulnerabilities = json.records[0].vulnerabilities;
 
 	for (let item of graphs) {
 		librariesByFile.push({
@@ -175,7 +180,6 @@ function parseSCAResultsJson(target: vscode.Uri) {
 	}
 
 	vulnerabilities.sort((a: any,b: any) => b.cvssScore - a.cvssScore);
-
 	for (let vulnerability of vulnerabilities) {
 		for (let vulnerableLibrary of vulnerability.libraries) {
 			let libraryIndexParts = vulnerableLibrary._links.ref.split('/');
@@ -186,7 +190,7 @@ function parseSCAResultsJson(target: vscode.Uri) {
 			let libraryCoord = `${library.coordinateType}.${library.coordinate1 || ''}.${library.coordinate2 || ''}.${libraryVersion.version}`;
 			for (let file of librariesByFile) {
 				if (file.filename && vscode.workspace.workspaceFolders) {
-					let fileUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, file.filename);
+					let fileUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, scaRootFolder, file.filename);
 					let configFile = fs.readFileSync(fileUri.fsPath);
 
 					if (file.libraries.has(libraryCoord)) {
@@ -199,7 +203,7 @@ function parseSCAResultsJson(target: vscode.Uri) {
 						let diagnostic = new vscode.Diagnostic(range, message, severity);
 						file.diagnostics.push(diagnostic);
 					}
-					
+
 					scaDiagnosticCollection.set(fileUri, file.diagnostics);
 				}
 			}
